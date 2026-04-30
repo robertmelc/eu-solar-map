@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EU Solar Recycling Potential</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080a0e;
+    --surface: #0d1117;
+    --surface2: #131920;
+    --border: #1e2d3d;
+    --accent: #00d4aa;
+    --red: #ff4455;
+    --yellow: #f0a500;
+    --text: #c8d8e8;
+    --text-dim: #4a6070;
+    --mono: 'Share Tech Mono', monospace;
+    --sans: 'Barlow Condensed', sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,170,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,170,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 20px 16px;
+  }
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-left h1 {
+    font-family: var(--sans);
+    font-weight: 900;
+    font-size: 26px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #fff;
+    line-height: 1;
+  }
+  .header-left h1 span { color: var(--accent); }
+  .header-left p {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 5px;
+    letter-spacing: 1px;
+  }
+  .live-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 2px;
+  }
+  .live-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity:1; transform:scale(1); }
+    50% { opacity:0.4; transform:scale(0.8); }
+  }
+
+  /* Top metrics */
+  .metrics-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 14px;
+    position: relative;
+    overflow: hidden;
+  }
+  .metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent);
+  }
+  .metric-card.yellow::before { background: var(--yellow); }
+  .metric-card.red::before { background: var(--red); }
+  .metric-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .metric-value {
+    font-family: var(--mono);
+    font-size: 22px;
+    color: #fff;
+    line-height: 1;
+  }
+  .metric-sub {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  /* Mode toggle */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .section-title {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .toggle-group {
+    display: flex;
+    gap: 6px;
+  }
+  .toggle-btn {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    padding: 4px 12px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.2s;
+  }
+  .toggle-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,212,170,0.08);
+  }
+
+  /* Map + table layout */
+  .map-layout {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .map-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+  .map-inner {
+    width: 100%;
+    height: 380px;
+    position: relative;
+  }
+  #map-svg { width: 100%; height: 100%; }
+
+  /* Tooltip */
+  #tooltip {
+    position: fixed;
+    display: none;
+    background: var(--surface2);
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    padding: 10px 14px;
+    font-family: var(--mono);
+    font-size: 11px;
+    pointer-events: none;
+    z-index: 1000;
+    min-width: 190px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  }
+  #tooltip .tt-name {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 14px;
+    color: #fff;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+  }
+  #tooltip .tt-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 3px;
+    color: var(--text-dim);
+  }
+  #tooltip .tt-row span:last-child { color: var(--text); }
+  #tooltip .tt-ag { color: var(--accent) !important; }
+
+  /* Rankings table */
+  .rankings {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .rank-header {
+    padding: 10px 14px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+  .rank-row {
+    display: flex;
+    align-items: center;
+    padding: 8px 14px;
+    border-bottom: 1px solid rgba(30,45,61,0.5);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .rank-row:last-child { border-bottom: none; }
+  .rank-row:hover { background: rgba(0,212,170,0.04); }
+  .rank-row.highlighted { background: rgba(0,212,170,0.08); border-left: 2px solid var(--accent); }
+  .rank-num {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    width: 20px;
+    flex-shrink: 0;
+  }
+  .rank-name {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 13px;
+    flex: 1;
+    color: var(--text);
+    letter-spacing: 0.5px;
+  }
+  .rank-val {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    text-align: right;
+  }
+  .rank-bar-wrap {
+    width: 60px;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-left: 8px;
+    flex-shrink: 0;
+  }
+  .rank-bar {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+
+  /* Legend */
+  .map-legend {
+    display: flex;
+    gap: 4px;
+    padding: 10px 14px;
+    border-top: 1px solid var(--border);
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .legend-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    margin-right: 6px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-dim);
+  }
+  .legend-swatch {
+    width: 14px; height: 8px;
+    border-radius: 1px;
+  }
+
+  /* Bottom bar */
+  .bottom-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .info-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px;
+  }
+  .info-card h3 {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(30,45,61,0.4);
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+  .info-row:last-child { border-bottom: none; }
+  .info-row span:first-child { color: var(--text-dim); }
+  .info-row span:last-child { color: var(--text); }
+  .info-row .green { color: var(--accent); }
+
+  footer {
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    padding: 12px 0;
+    border-top: 1px solid var(--border);
+  }
+
+  @media (max-width: 640px) {
+    .map-layout { grid-template-columns: 1fr; }
+    .metrics-row { grid-template-columns: 1fr 1fr; }
+    .bottom-grid { grid-template-columns: 1fr; }
+    .map-inner { height: 260px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="header-left">
+      <h1>EU SOLAR <span>RECYKLACE</span></h1>
+      <p>POTENCIÁL STŘÍBRA Z EVA FÓLIÍ · 27 ZEMÍ EU · DATA 2025</p>
+    </div>
+    <div class="live-badge">
+      <div class="live-dot"></div>
+      2025
+    </div>
+  </header>
+
+  <!-- Top metrics -->
+  <div class="metrics-row">
+    <div class="metric-card">
+      <div class="metric-label">EU celkem</div>
+      <div class="metric-value">406 GW</div>
+      <div class="metric-sub">instalovaná kapacita</div>
+    </div>
+    <div class="metric-card yellow">
+      <div class="metric-label">Odhad panelů</div>
+      <div class="metric-value">~1 mld</div>
+      <div class="metric-sub">kusů solárních panelů</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Potenciál EVA</div>
+      <div class="metric-value">508M t</div>
+      <div class="metric-sub">fólie k recyklaci</div>
+    </div>
+    <div class="metric-card red">
+      <div class="metric-label">Potenciál Ag</div>
+      <div class="metric-value accent">~126k t</div>
+      <div class="metric-sub" style="color:var(--accent)">stříbra celkem EU</div>
+    </div>
+  </div>
+
+  <!-- Map + Rankings -->
+  <div class="section-header">
+    <div class="section-title">Mapa recyklačního potenciálu</div>
+    <div class="toggle-group">
+      <button class="toggle-btn active" id="btn-gw" onclick="setMode('gw')">KAPACITA GW</button>
+      <button class="toggle-btn" id="btn-ag" onclick="setMode('ag')">POTENCIÁL AG</button>
+      <button class="toggle-btn" id="btn-panels" onclick="setMode('panels')">POČET PANELŮ</button>
+    </div>
+  </div>
+
+  <div class="map-layout">
+    <div class="map-container">
+      <div class="map-inner">
+        <svg id="map-svg"></svg>
+      </div>
+      <div class="map-legend" id="map-legend"></div>
+    </div>
+    <div class="rankings">
+      <div class="rank-header" id="rank-title">TOP 27 · KAPACITA GW</div>
+      <div id="rank-list" style="overflow-y:auto;max-height:420px;"></div>
+    </div>
+  </div>
+
+  <!-- Bottom info -->
+  <div class="bottom-grid">
+    <div class="info-card">
+      <h3>Výpočet · Metodika</h3>
+      <div class="info-row"><span>Výkon panelu (průměr)</span><span>400 Wp</span></div>
+      <div class="info-row"><span>EVA fólie / panel</span><span>~0.5 kg</span></div>
+      <div class="info-row"><span>Ag obsah EVA</span><span>~0.5% hm.</span></div>
+      <div class="info-row"><span>Ag z 1 tuny EVA</span><span class="green">5 kg</span></div>
+      <div class="info-row"><span>Životnost panelu</span><span>25–30 let</span></div>
+      <div class="info-row"><span>Recyklační vlna vrcholí</span><span>2035–2040</span></div>
+    </div>
+    <div class="info-card">
+      <h3>Strategické okno</h3>
+      <div class="info-row"><span>Nové instalace EU 2025</span><span>65 GW/rok</span></div>
+      <div class="info-row"><span>Cíl EU 2030</span><span>750 GW</span></div>
+      <div class="info-row"><span>Ag z nových instalací/rok</span><span class="green">+20k t</span></div>
+      <div class="info-row"><span>Největší trh</span><span>Německo 90 GW</span></div>
+      <div class="info-row"><span>Nejrychlejší růst</span><span>Rumunsko</span></div>
+      <div class="info-row"><span>ČR pozice</span><span>~9. místo</span></div>
+    </div>
+  </div>
+
+  <!-- Timeline section -->
+  <div class="section-header" style="margin-bottom:12px;">
+    <div class="section-title">Recyklační vlna 2025–2035 · EU + ČR</div>
+    <div class="toggle-group">
+      <button class="toggle-btn active" id="tl-eu" onclick="setTimeline('eu')">EU CELKEM</button>
+      <button class="toggle-btn" id="tl-cz" onclick="setTimeline('cz')">ČESKO</button>
+    </div>
+  </div>
+
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:16px 20px;margin-bottom:20px;">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;" id="tl-metrics">
+    </div>
+    <div style="position:relative;width:100%;height:280px;">
+      <canvas id="timeline-chart" role="img" aria-label="Graf recyklačního potenciálu stříbra z EVA fólií solárních panelů 2025-2035"></canvas>
+    </div>
+    <div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap;">
+      <span style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--text-dim);">
+        <span style="width:12px;height:3px;background:#00d4aa;display:inline-block;border-radius:2px;"></span>Ag z dosloužilých panelů (t)
+      </span>
+      <span style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--text-dim);">
+        <span style="width:12px;height:3px;background:#f0a500;display:inline-block;border-radius:2px;border-top:2px dashed #f0a500;"></span>Kumulativní Ag celkem (t)
+      </span>
+      <span style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--text-dim);">
+        <span style="width:12px;height:3px;background:#3b82f6;display:inline-block;border-radius:2px;"></span>Nové instalace → EVA k recyklaci za 27 let (t)
+      </span>
+    </div>
+  </div>
+
+  <!-- Methodology note -->
+  <div style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:14px 18px;margin-bottom:20px;display:flex;gap:16px;flex-wrap:wrap;">
+    <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:1px;min-width:120px;">METODIKA VÝPOČTU</div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);line-height:1.8;flex:1;">
+      Historická instalace EU (2000–2024) rozdělena do ročních kohort · Životnost panelů: 27 let průměr · Recyklační podíl narůstá: 2025=5% → 2030=40% → 2035=75% (dle EU WEEE regulace) · 
+      Ag = panely × 0.5kg EVA × 0.5% Ag · Nové instalace 2025–2035 dle IEA/SolarPower Europe prognóz
+    </div>
+  </div>
+
+  <footer>
+    EU SOLAR RECYKLACE · ZDROJE: SOLARPOWER EUROPE 2025 · IEA 2026 · EMBER ENERGY · MPO ČR · Pouze orientační data
+  </footer>
+
+</div>
+
+<div id="tooltip">
+  <div class="tt-name" id="tt-name"></div>
+  <div class="tt-row"><span>Kapacita:</span><span id="tt-gw"></span></div>
+  <div class="tt-row"><span>Panely:</span><span id="tt-panels"></span></div>
+  <div class="tt-row"><span>EVA fólie:</span><span id="tt-eva"></span></div>
+  <div class="tt-row"><span>Potenciál Ag:</span><span class="tt-ag" id="tt-ag"></span></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<script>
+const countries = {
+  276: { name:'Německo',     gw:90,   iso:'DE' },
+  724: { name:'Španělsko',   gw:76,   iso:'ES' },
+  380: { name:'Itálie',      gw:73,   iso:'IT' },
+  250: { name:'Francie',     gw:24,   iso:'FR' },
+  528: { name:'Nizozemsko',  gw:24,   iso:'NL' },
+  616: { name:'Polsko',      gw:20,   iso:'PL' },
+  300: { name:'Řecko',       gw:13,   iso:'GR' },
+  348: { name:'Maďarsko',    gw:9,    iso:'HU' },
+  56:  { name:'Belgie',      gw:9,    iso:'BE' },
+  642: { name:'Rumunsko',    gw:8,    iso:'RO' },
+  620: { name:'Portugalsko', gw:8,    iso:'PT' },
+  40:  { name:'Rakousko',    gw:8,    iso:'AT' },
+  752: { name:'Švédsko',     gw:5,    iso:'SE' },
+  208: { name:'Dánsko',      gw:5,    iso:'DK' },
+  100: { name:'Bulharsko',   gw:4,    iso:'BG' },
+  203: { name:'Česko',       gw:4.4,  iso:'CZ' },
+  246: { name:'Finsko',      gw:3.5,  iso:'FI' },
+  191: { name:'Chorvatsko',  gw:1.5,  iso:'HR' },
+  372: { name:'Irsko',       gw:1.5,  iso:'IE' },
+  440: { name:'Litva',       gw:1.2,  iso:'LT' },
+  703: { name:'Slovensko',   gw:1.2,  iso:'SK' },
+  705: { name:'Slovinsko',   gw:0.9,  iso:'SI' },
+  233: { name:'Estonsko',    gw:0.6,  iso:'EE' },
+  196: { name:'Kypr',        gw:0.5,  iso:'CY' },
+  428: { name:'Lotyšsko',    gw:0.3,  iso:'LV' },
+  442: { name:'Lucembursko', gw:0.3,  iso:'LU' },
+  470: { name:'Malta',       gw:0.1,  iso:'MT' },
+};
+
+Object.values(countries).forEach(d => {
+  const panels = (d.gw * 1e9) / 400;
+  d.panels = panels;
+  d.eva = panels * 0.5 / 1000;
+  d.ag = d.eva * 5 / 1000;
+});
+
+let mode = 'gw';
+let highlightedId = null;
+
+const gwColors   = ['#0a2d1f','#0e4a2f','#1a7a4a','#00d4aa','#7fffd4'];
+const agColors   = ['#1a1a0a','#3d2f00','#856000','#f0a500','#ffe066'];
+const panColors  = ['#0a1a2d','#0e2d4a','#1a5080','#3b82f6','#93c5fd'];
+
+function getScale(m) {
+  if (m==='gw')     return d3.scaleQuantize().domain([0,90]).range(gwColors);
+  if (m==='ag')     return d3.scaleQuantize().domain([0,28000]).range(agColors);
+  if (m==='panels') return d3.scaleQuantize().domain([0,225]).range(panColors);
+}
+
+function getValue(d, m) {
+  if (m==='gw')     return d.gw;
+  if (m==='ag')     return d.ag;
+  if (m==='panels') return d.panels / 1e6;
+}
+
+function formatVal(d, m) {
+  if (m==='gw')     return d.gw + ' GW';
+  if (m==='ag')     return Math.round(d.ag).toLocaleString('cs') + ' t Ag';
+  if (m==='panels') return (d.panels/1e6).toFixed(0) + ' M panelů';
+}
+
+const euIds = new Set(Object.keys(countries).map(Number));
+let svgEl, pathFn;
+
+function updateColors() {
+  const scale = getScale(mode);
+  svgEl && svgEl.selectAll('path.eu-country')
+    .attr('fill', d => {
+      const c = countries[+d.id];
+      if (!c) return '#0d1117';
+      const col = scale(getValue(c, mode));
+      return highlightedId === +d.id ? '#ffffff22' : col;
+    });
+}
+
+function updateLegend() {
+  const colors = mode==='gw' ? gwColors : mode==='ag' ? agColors : panColors;
+  const labels = mode==='gw'
+    ? ['0–18','18–36','36–54','54–72','72–90 GW']
+    : mode==='ag'
+    ? ['0–5k','5k–10k','10k–16k','16k–22k','22k+ t']
+    : ['0–45','45–90','90–135','135–180','180+ M'];
+  document.getElementById('map-legend').innerHTML =
+    `<span class="legend-label">${mode==='gw'?'GW':mode==='ag'?'t Ag':'M panelů'}:</span>` +
+    colors.map((c,i) => `<span class="legend-item"><span class="legend-swatch" style="background:${c}"></span>${labels[i]}</span>`).join('');
+}
+
+function updateRankings() {
+  const sorted = Object.entries(countries)
+    .map(([id,d]) => ({id:+id, ...d}))
+    .sort((a,b) => getValue(b,mode) - getValue(a,mode));
+
+  const maxVal = getValue(sorted[0], mode);
+  const titles = { gw:'TOP 27 · KAPACITA GW', ag:'TOP 27 · POTENCIÁL AG (t)', panels:'TOP 27 · POČET PANELŮ (M)' };
+  document.getElementById('rank-title').textContent = titles[mode];
+
+  document.getElementById('rank-list').innerHTML = sorted.map((d,i) => `
+    <div class="rank-row ${highlightedId === d.id ? 'highlighted':''}" onclick="highlightCountry(${d.id})">
+      <span class="rank-num">${i+1}</span>
+      <span class="rank-name">${d.name}</span>
+      <span class="rank-val">${formatVal(d,mode)}</span>
+      <span class="rank-bar-wrap"><span class="rank-bar" style="width:${Math.round(getValue(d,mode)/maxVal*100)}%"></span></span>
+    </div>`).join('');
+}
+
+function highlightCountry(id) {
+  highlightedId = highlightedId === id ? null : id;
+  updateColors();
+  updateRankings();
+}
+
+function setMode(m) {
+  mode = m;
+  ['gw','ag','panels'].forEach(x => {
+    document.getElementById('btn-'+x).classList.toggle('active', x===m);
+  });
+  updateColors();
+  updateLegend();
+  updateRankings();
+}
+
+const tooltip = document.getElementById('tooltip');
+
+d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json').then(world => {
+  const allCountries = topojson.feature(world, world.objects.countries);
+  const euFeatures = allCountries.features.filter(f => euIds.has(+f.id));
+
+  const svg = d3.select('#map-svg');
+  const w = 620, h = 380;
+  svg.attr('viewBox', `0 0 ${w} ${h}`);
+
+  const proj = d3.geoMercator()
+    .center([14, 54])
+    .scale(560)
+    .translate([w/2 - 20, h/2 + 20]);
+
+  pathFn = d3.geoPath(proj);
+  svgEl = svg;
+
+  svg.selectAll('path.eu-country')
+    .data(euFeatures)
+    .join('path')
+    .attr('class','eu-country')
+    .attr('d', pathFn)
+    .attr('stroke','rgba(0,212,170,0.25)')
+    .attr('stroke-width', 0.7)
+    .style('cursor','pointer')
+    .on('mousemove', function(event, d) {
+      const c = countries[+d.id];
+      if (!c) return;
+      document.getElementById('tt-name').textContent = c.name;
+      document.getElementById('tt-gw').textContent = c.gw + ' GW';
+      document.getElementById('tt-panels').textContent = (c.panels/1e6).toFixed(1) + ' mil. kusů';
+      document.getElementById('tt-eva').textContent = Math.round(c.eva/1e3).toLocaleString('cs') + ' tis. t';
+      document.getElementById('tt-ag').textContent = Math.round(c.ag).toLocaleString('cs') + ' t Ag';
+      tooltip.style.display = 'block';
+      tooltip.style.left = (event.clientX + 14) + 'px';
+      tooltip.style.top  = (event.clientY - 10) + 'px';
+    })
+    .on('mouseleave', () => { tooltip.style.display='none'; })
+    .on('click', (e,d) => highlightCountry(+d.id));
+
+  updateColors();
+  updateLegend();
+  updateRankings();
+}).catch(() => {
+  document.getElementById('map-svg').innerHTML = `<text x="20" y="40" fill="#4a6070" font-family="monospace" font-size="12">Mapa se nepodařila načíst – potřebuje internetové připojení.</text>`;
+  updateLegend();
+  updateRankings();
+});
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+// ── Historical EU annual additions (GW) ──────────────────────────────
+const euAnnual = {
+  2000:0.1, 2001:0.1, 2002:0.1, 2003:0.2, 2004:0.3,
+  2005:0.6, 2006:1.0, 2007:1.5, 2008:4.0, 2009:5.5,
+  2010:13.0,2011:21.5,2012:17.5,2013:10.5,2014:7.5,
+  2015:8.5, 2016:6.5, 2017:8.5, 2018:11.0,2019:16.5,
+  2020:18.5,2021:28.0,2022:41.0,2023:56.0,2024:65.6,
+};
+// CZ share (~1.1% of EU historically, now 4.4/406 = 1.08%)
+const czShare = 0.011;
+
+// Projected new additions 2025-2035 (GW, EU) — IEA/SolarPower Europe
+const projAdds = {
+  2025:65.0, 2026:62.0, 2027:60.0, 2028:65.0, 2029:70.0,
+  2030:70.0, 2031:72.0, 2032:74.0, 2033:76.0, 2034:78.0, 2035:80.0
+};
+
+const PANEL_W   = 0.4;    // GW per million panels → panels = GW*1e9/400
+const EVA_KG    = 0.5;    // kg EVA per panel
+const AG_PCT    = 0.005;  // 0.5% Ag in EVA
+const LIFE      = 27;     // avg panel lifetime years
+
+// Recycling adoption rate per year (% of end-of-life panels actually recycled)
+const recyclePct = {
+  2025:0.05, 2026:0.08, 2027:0.12, 2028:0.18, 2029:0.26,
+  2030:0.40, 2031:0.52, 2032:0.62, 2033:0.70, 2034:0.74, 2035:0.75
+};
+
+function gwToAgTonnes(gw) {
+  const panels = (gw * 1e9) / (PANEL_W * 1e9 / 1);   // actually gw*1e9/400
+  const panelsReal = (gw * 1e9) / 400;
+  return panelsReal * EVA_KG * AG_PCT / 1000;           // tonnes
+}
+
+function buildTimeline(region) {
+  const years = [2025,2026,2027,2028,2029,2030,2031,2032,2033,2034,2035];
+  const scale  = region === 'cz' ? czShare : 1;
+
+  const annualAg = [], futureAg = [], cumAg = [];
+  let cum = 0;
+
+  years.forEach(yr => {
+    // Panels from installations LIFE years ago reaching end of life
+    const srcYr = yr - LIFE;
+    const eolGw = (euAnnual[srcYr] || 0) * scale;
+    const rPct  = recyclePct[yr] || 0.05;
+    const agFromOld = gwToAgTonnes(eolGw) * rPct;
+
+    // Future installs that will eventually feed the recycling pipeline
+    const newGw   = (projAdds[yr] || 65) * scale;
+    const agFuture = gwToAgTonnes(newGw) * 0.03; // small fraction already
+
+    annualAg.push(Math.round(agFromOld));
+    futureAg.push(Math.round(agFuture));
+    cum += agFromOld;
+    cumAg.push(Math.round(cum));
+  });
+
+  return { years, annualAg, futureAg, cumAg };
+}
+
+let tlMode = 'eu';
+let tlChart = null;
+
+function setTimeline(m) {
+  tlMode = m;
+  document.getElementById('tl-eu').classList.toggle('active', m==='eu');
+  document.getElementById('tl-cz').classList.toggle('active', m==='cz');
+  renderTimeline();
+}
+
+function renderTimeline() {
+  const { years, annualAg, futureAg, cumAg } = buildTimeline(tlMode);
+  const isCz = tlMode === 'cz';
+  const unit  = isCz ? 't' : 't';
+
+  // Metrics
+  const totalCum = cumAg[cumAg.length-1];
+  const peak     = Math.max(...annualAg);
+  const peakYr   = years[annualAg.indexOf(peak)];
+  const y2030    = annualAg[years.indexOf(2030)];
+  const growth   = annualAg[annualAg.length-1] > 0
+    ? Math.round((annualAg[annualAg.length-1] / (annualAg[0]||1) - 1) * 100)
+    : 0;
+
+  document.getElementById('tl-metrics').innerHTML = `
+    <div style="background:var(--surface2);border-radius:4px;padding:12px;">
+      <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--text-dim);margin-bottom:4px;">KUMULATIVNĚ 2025–2035</div>
+      <div style="font-family:var(--mono);font-size:20px;color:#fff;">${totalCum.toLocaleString('cs')} t</div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--accent);">stříbra celkem</div>
+    </div>
+    <div style="background:var(--surface2);border-radius:4px;padding:12px;">
+      <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--text-dim);margin-bottom:4px;">ROČNÍ MAXIMUM</div>
+      <div style="font-family:var(--mono);font-size:20px;color:#fff;">${peak.toLocaleString('cs')} t</div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--yellow);">rok ${peakYr}</div>
+    </div>
+    <div style="background:var(--surface2);border-radius:4px;padding:12px;">
+      <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--text-dim);margin-bottom:4px;">OBJEM V ROCE 2030</div>
+      <div style="font-family:var(--mono);font-size:20px;color:#fff;">${y2030.toLocaleString('cs')} t</div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);">ročně Ag</div>
+    </div>
+    <div style="background:var(--surface2);border-radius:4px;padding:12px;">
+      <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--text-dim);margin-bottom:4px;">RŮST 2025→2035</div>
+      <div style="font-family:var(--mono);font-size:20px;color:#fff;">+${growth}%</div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--accent);">nárůst recykl. objemu</div>
+    </div>`;
+
+  if (tlChart) { tlChart.destroy(); tlChart = null; }
+
+  const ctx = document.getElementById('timeline-chart').getContext('2d');
+  tlChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: years.map(String),
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Ag z dosloužilých panelů (t)',
+          data: annualAg,
+          backgroundColor: 'rgba(0,212,170,0.7)',
+          borderColor: '#00d4aa',
+          borderWidth: 1,
+          yAxisID: 'y',
+          order: 2
+        },
+        {
+          type: 'bar',
+          label: 'Ag z nových instalací – budoucí pipeline (t)',
+          data: futureAg,
+          backgroundColor: 'rgba(59,130,246,0.5)',
+          borderColor: '#3b82f6',
+          borderWidth: 1,
+          yAxisID: 'y',
+          order: 3
+        },
+        {
+          type: 'line',
+          label: 'Kumulativní Ag (t)',
+          data: cumAg,
+          borderColor: '#f0a500',
+          borderWidth: 2,
+          borderDash: [5,4],
+          pointBackgroundColor: '#f0a500',
+          pointRadius: 3,
+          fill: false,
+          yAxisID: 'y2',
+          order: 1,
+          tension: 0.3
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#131920',
+          borderColor: '#1e2d3d',
+          borderWidth: 1,
+          titleColor: '#c8d8e8',
+          bodyColor: '#4a6070',
+          callbacks: {
+            label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString('cs')} t`
+          }
+        }
+      },
+      scales: {
+        x: {
+          stacked: true,
+          grid: { color: 'rgba(30,45,61,0.6)' },
+          ticks: { color: '#4a6070', font: { family: 'Share Tech Mono', size: 11 } }
+        },
+        y: {
+          stacked: true,
+          position: 'left',
+          grid: { color: 'rgba(30,45,61,0.6)' },
+          ticks: {
+            color: '#4a6070',
+            font: { family: 'Share Tech Mono', size: 10 },
+            callback: v => v.toLocaleString('cs') + ' t'
+          }
+        },
+        y2: {
+          position: 'right',
+          grid: { display: false },
+          ticks: {
+            color: '#f0a500',
+            font: { family: 'Share Tech Mono', size: 10 },
+            callback: v => v.toLocaleString('cs') + ' t'
+          }
+        }
+      }
+    }
+  });
+}
+
+renderTimeline();
+</script>
+</body>
+</html>

@@ -691,54 +691,62 @@ const euAnnual = {
   2015:8.5, 2016:6.5, 2017:8.5, 2018:11.0,2019:16.5,
   2020:18.5,2021:28.0,2022:41.0,2023:56.0,2024:65.6,
 };
-// CZ share (~1.1% of EU historically, now 4.4/406 = 1.08%)
-const czShare = 0.011;
 
-// Projected new additions 2025-2035 (GW, EU) — IEA/SolarPower Europe
-const projAdds = {
-  2025:65.0, 2026:62.0, 2027:60.0, 2028:65.0, 2029:70.0,
-  2030:70.0, 2031:72.0, 2032:74.0, 2033:76.0, 2034:78.0, 2035:80.0
+// ── Reálná CZ historická data (GW ročně) ────────────────────────────
+// ČR boom 2009–2011 (solární boom), pak útlum, obnova od 2021
+const czAnnual = {
+  2000:0.001,2001:0.001,2002:0.001,2003:0.002,2004:0.003,
+  2005:0.005,2006:0.010,2007:0.030,2008:0.055,2009:0.410,
+  2010:1.490,2011:0.340,2012:0.030,2013:0.020,2014:0.015,
+  2015:0.015,2016:0.015,2017:0.020,2018:0.030,2019:0.060,
+  2020:0.180,2021:0.330,2022:0.590,2023:0.967,2024:1.200,
 };
 
-const PANEL_W   = 0.4;    // GW per million panels → panels = GW*1e9/400
-const EVA_KG    = 0.5;    // kg EVA per panel
-const AG_PCT    = 0.005;  // 0.5% Ag in EVA
-const LIFE      = 27;     // avg panel lifetime years
+// Projected new additions 2025-2035 (GW/rok)
+const projAdds = {
+  eu: { 2025:65.0,2026:62.0,2027:60.0,2028:65.0,2029:70.0,2030:70.0,2031:72.0,2032:74.0,2033:76.0,2034:78.0,2035:80.0 },
+  cz: { 2025:1.30, 2026:1.20, 2027:1.10, 2028:1.20, 2029:1.30, 2030:1.40, 2031:1.45, 2032:1.50, 2033:1.55, 2034:1.60, 2035:1.65 }
+};
 
-// Recycling adoption rate per year (% of end-of-life panels actually recycled)
+const EVA_KG    = 0.5;    // kg EVA per panel
+const AG_PCT    = 0.005;  // 0.5% Ag v EVA
+const LIFE      = 27;     // průměrná životnost panelů (roky)
+
+// Podíl skutečně recyklovaných panelů v daném roce
 const recyclePct = {
   2025:0.05, 2026:0.08, 2027:0.12, 2028:0.18, 2029:0.26,
   2030:0.40, 2031:0.52, 2032:0.62, 2033:0.70, 2034:0.74, 2035:0.75
 };
 
+// GW → tuny Ag (bez zaokrouhlení zde – zaokrouhlíme až při zobrazení)
 function gwToAgTonnes(gw) {
-  const panels = (gw * 1e9) / (PANEL_W * 1e9 / 1);   // actually gw*1e9/400
-  const panelsReal = (gw * 1e9) / 400;
-  return panelsReal * EVA_KG * AG_PCT / 1000;           // tonnes
+  const panels = (gw * 1e9) / 400;
+  return panels * EVA_KG * AG_PCT / 1000; // kg → tuny
 }
 
 function buildTimeline(region) {
   const years = [2025,2026,2027,2028,2029,2030,2031,2032,2033,2034,2035];
-  const scale  = region === 'cz' ? czShare : 1;
+  const historical = region === 'cz' ? czAnnual : euAnnual;
+  const projected  = projAdds[region];
 
   const annualAg = [], futureAg = [], cumAg = [];
   let cum = 0;
 
   years.forEach(yr => {
-    // Panels from installations LIFE years ago reaching end of life
     const srcYr = yr - LIFE;
-    const eolGw = (euAnnual[srcYr] || 0) * scale;
+    const eolGw = (historical[srcYr] || 0);
     const rPct  = recyclePct[yr] || 0.05;
     const agFromOld = gwToAgTonnes(eolGw) * rPct;
 
-    // Future installs that will eventually feed the recycling pipeline
-    const newGw   = (projAdds[yr] || 65) * scale;
-    const agFuture = gwToAgTonnes(newGw) * 0.03; // small fraction already
+    const newGw    = (projected[yr] || 0);
+    const agFuture = gwToAgTonnes(newGw) * 0.03;
 
-    annualAg.push(Math.round(agFromOld));
-    futureAg.push(Math.round(agFuture));
+    // Pro CZ zobrazujeme kg (menší čísla), pro EU tuny
+    const divisor = region === 'cz' ? 1 : 1;
+    annualAg.push(parseFloat(agFromOld.toFixed(region === 'cz' ? 2 : 0)));
+    futureAg.push(parseFloat(agFuture.toFixed(region === 'cz' ? 2 : 0)));
     cum += agFromOld;
-    cumAg.push(Math.round(cum));
+    cumAg.push(parseFloat(cum.toFixed(region === 'cz' ? 2 : 0)));
   });
 
   return { years, annualAg, futureAg, cumAg };
@@ -757,31 +765,34 @@ function setTimeline(m) {
 function renderTimeline() {
   const { years, annualAg, futureAg, cumAg } = buildTimeline(tlMode);
   const isCz = tlMode === 'cz';
-  const unit  = isCz ? 't' : 't';
+  const label = isCz ? 'kg' : 't';
+  const mult  = isCz ? 1000 : 1; // CZ zobrazujeme v kg
 
   // Metrics
-  const totalCum = cumAg[cumAg.length-1];
-  const peak     = Math.max(...annualAg);
-  const peakYr   = years[annualAg.indexOf(peak)];
-  const y2030    = annualAg[years.indexOf(2030)];
+  const totalCum = isCz ? (cumAg[cumAg.length-1]*mult).toFixed(0) : Math.round(cumAg[cumAg.length-1]).toLocaleString('cs');
+  const peakRaw  = Math.max(...annualAg);
+  const peak     = isCz ? (peakRaw*mult).toFixed(1) : Math.round(peakRaw).toLocaleString('cs');
+  const peakYr   = years[annualAg.indexOf(peakRaw)];
+  const y2030raw = annualAg[years.indexOf(2030)];
+  const y2030    = isCz ? (y2030raw*mult).toFixed(1) : Math.round(y2030raw).toLocaleString('cs');
   const growth   = annualAg[annualAg.length-1] > 0
-    ? Math.round((annualAg[annualAg.length-1] / (annualAg[0]||1) - 1) * 100)
+    ? Math.round((annualAg[annualAg.length-1] / (annualAg[0]||0.001) - 1) * 100)
     : 0;
 
   document.getElementById('tl-metrics').innerHTML = `
     <div style="background:var(--surface2);border-radius:4px;padding:12px;">
       <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--text-dim);margin-bottom:4px;">KUMULATIVNĚ 2025–2035</div>
-      <div style="font-family:var(--mono);font-size:20px;color:#fff;">${totalCum.toLocaleString('cs')} t</div>
+      <div style="font-family:var(--mono);font-size:20px;color:#fff;">${totalCum} ${label}</div>
       <div style="font-family:var(--mono);font-size:9px;color:var(--accent);">stříbra celkem</div>
     </div>
     <div style="background:var(--surface2);border-radius:4px;padding:12px;">
       <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--text-dim);margin-bottom:4px;">ROČNÍ MAXIMUM</div>
-      <div style="font-family:var(--mono);font-size:20px;color:#fff;">${peak.toLocaleString('cs')} t</div>
+      <div style="font-family:var(--mono);font-size:20px;color:#fff;">${peak} ${label}</div>
       <div style="font-family:var(--mono);font-size:9px;color:var(--yellow);">rok ${peakYr}</div>
     </div>
     <div style="background:var(--surface2);border-radius:4px;padding:12px;">
       <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--text-dim);margin-bottom:4px;">OBJEM V ROCE 2030</div>
-      <div style="font-family:var(--mono);font-size:20px;color:#fff;">${y2030.toLocaleString('cs')} t</div>
+      <div style="font-family:var(--mono);font-size:20px;color:#fff;">${y2030} ${label}</div>
       <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);">ročně Ag</div>
     </div>
     <div style="background:var(--surface2);border-radius:4px;padding:12px;">
@@ -847,7 +858,10 @@ function renderTimeline() {
           titleColor: '#c8d8e8',
           bodyColor: '#4a6070',
           callbacks: {
-            label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString('cs')} t`
+            label: ctx => {
+              const val = isCz ? (ctx.parsed.y * 1000).toFixed(1) + ' kg' : Math.round(ctx.parsed.y).toLocaleString('cs') + ' t';
+              return ` ${ctx.dataset.label}: ${val}`;
+            }
           }
         }
       },
@@ -864,7 +878,7 @@ function renderTimeline() {
           ticks: {
             color: '#4a6070',
             font: { family: 'Share Tech Mono', size: 10 },
-            callback: v => v.toLocaleString('cs') + ' t'
+            callback: v => isCz ? (v*1000).toFixed(0) + ' kg' : v.toLocaleString('cs') + ' t'
           }
         },
         y2: {
@@ -873,7 +887,7 @@ function renderTimeline() {
           ticks: {
             color: '#f0a500',
             font: { family: 'Share Tech Mono', size: 10 },
-            callback: v => v.toLocaleString('cs') + ' t'
+            callback: v => isCz ? (v*1000).toFixed(0) + ' kg' : v.toLocaleString('cs') + ' t'
           }
         }
       }

@@ -994,7 +994,7 @@ function initPartnerMap() {
   if (!L) { setTimeout(initPartnerMap, 300); return; }
 
   pMap = L.map('partner-map', { zoomControl: true }).setView([51, 10], 4);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
     attribution: '© CartoDB',
     maxZoom: 18
   }).addTo(pMap);

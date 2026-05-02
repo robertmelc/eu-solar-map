@@ -385,6 +385,16 @@
     </div>
   </header>
 
+  <!-- Hlavní navigace -->
+  <div style="display:flex;gap:6px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:0;">
+    <button id="tab-potential" onclick="switchTab('potential')" style="font-family:var(--mono);font-size:11px;letter-spacing:2px;padding:8px 16px;background:rgba(0,212,170,0.1);border:1px solid var(--accent);border-bottom:none;color:var(--accent);cursor:pointer;border-radius:3px 3px 0 0;text-transform:uppercase;">POTENCIÁL EU</button>
+    <button id="tab-partners" onclick="switchTab('partners')" style="font-family:var(--mono);font-size:11px;letter-spacing:2px;padding:8px 16px;background:transparent;border:1px solid var(--border);border-bottom:none;color:var(--text-dim);cursor:pointer;border-radius:3px 3px 0 0;text-transform:uppercase;">MAPA PARTNERŮ</button>
+    <button id="tab-timeline" onclick="switchTab('timeline')" style="font-family:var(--mono);font-size:11px;letter-spacing:2px;padding:8px 16px;background:transparent;border:1px solid var(--border);border-bottom:none;color:var(--text-dim);cursor:pointer;border-radius:3px 3px 0 0;text-transform:uppercase;">TIMELINE 2025–2035</button>
+  </div>
+
+  <!-- TAB: POTENCIÁL EU -->
+  <div id="tab-content-potential">
+
   <!-- Top metrics -->
   <div class="metrics-row">
     <div class="metric-card">
@@ -454,6 +464,31 @@
     </div>
   </div>
 
+  </div><!-- END tab-content-potential -->
+  <div id="tab-content-partners" style="display:none;">
+
+    <div class="section-header" style="margin-bottom:12px;">
+      <div class="section-title">Dodavatelé EVA fólií & Odběratelé stříbra</div>
+      <div class="toggle-group">
+        <button class="toggle-btn active" id="pfilter-all" onclick="filterPartners('all')">VŠE</button>
+        <button class="toggle-btn" id="pfilter-supplier" onclick="filterPartners('supplier')">🟢 DODAVATELÉ EVA</button>
+        <button class="toggle-btn" id="pfilter-buyer" onclick="filterPartners('buyer')">🔵 ODBĚRATELÉ Ag</button>
+      </div>
+    </div>
+
+    <!-- Partner map -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;overflow:hidden;margin-bottom:16px;">
+      <div id="partner-map" style="width:100%;height:420px;"></div>
+    </div>
+
+    <!-- Partner cards -->
+    <div id="partner-cards" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;"></div>
+
+  </div><!-- END tab-content-partners -->
+
+  <!-- TAB: TIMELINE -->
+  <div id="tab-content-timeline" style="display:none;">
+
   <!-- Timeline section -->
   <div class="section-header" style="margin-bottom:12px;">
     <div class="section-title">Recyklační vlna 2025–2035 · EU + ČR</div>
@@ -482,7 +517,6 @@
     </div>
   </div>
 
-  <!-- Methodology note -->
   <div style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:14px 18px;margin-bottom:20px;display:flex;gap:16px;flex-wrap:wrap;">
     <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:1px;min-width:120px;">METODIKA VÝPOČTU</div>
     <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);line-height:1.8;flex:1;">
@@ -490,6 +524,8 @@
       Ag = panely × 0.5kg EVA × 0.5% Ag · Nové instalace 2025–2035 dle IEA/SolarPower Europe prognóz
     </div>
   </div>
+
+  </div><!-- END tab-content-timeline -->
 
   <footer>
     EU SOLAR RECYKLACE · ZDROJE: SOLARPOWER EUROPE 2025 · IEA 2026 · EMBER ENERGY · MPO ČR · Pouze orientační data
@@ -896,6 +932,128 @@ function renderTimeline() {
 }
 
 renderTimeline();
+
+// ── Tab switching ─────────────────────────────────────────────────────
+function switchTab(tab) {
+  ['potential','partners','timeline'].forEach(t => {
+    document.getElementById('tab-content-' + t).style.display = t === tab ? 'block' : 'none';
+    const btn = document.getElementById('tab-' + t);
+    if (t === tab) {
+      btn.style.background = 'rgba(0,212,170,0.1)';
+      btn.style.borderColor = 'var(--accent)';
+      btn.style.color = 'var(--accent)';
+    } else {
+      btn.style.background = 'transparent';
+      btn.style.borderColor = 'var(--border)';
+      btn.style.color = 'var(--text-dim)';
+    }
+  });
+  if (tab === 'partners' && !partnerMapInit) initPartnerMap();
+  if (tab === 'timeline') renderTimeline();
+}
+
+// ── Partner data ──────────────────────────────────────────────────────
+const partners = [
+  { name:'TECHNOWORLD a.s.', type:'supplier', country:'CZ', lat:49.9246, lng:14.2559,
+    desc:'Vedoucí WEEE zpracovatel v ČR · Nová japonská linka 2025 · Odděluje EVA fólii od skla',
+    contact:'info@technoworld.cz · +420 234 235 111', priority:'★★★ PRVNÍ KONTAKT' },
+  { name:'ROSI Solar', type:'supplier', country:'FR', lat:45.1969, lng:5.7715,
+    desc:'EU lídr recyklace FV panelů · 20M EUR funding · Expanduje do DE a CH',
+    contact:'rosi-solar.com', priority:'★★ PARTNER / DODAVATEL' },
+  { name:'Reiling Group', type:'supplier', country:'DE', lat:51.6783, lng:7.9303,
+    desc:'Velký německý zpracovatel WEEE · Zdroj EVA fólií pro DE region',
+    contact:'reiling.de · +49 2388 301210', priority:'★★ DODAVATEL DE' },
+  { name:'Veolia Recycling', type:'supplier', country:'FR', lat:47.4894, lng:-0.4898,
+    desc:'Globální hráč · FV linky v celé EU · Francie, Německo, Benelux',
+    contact:'recyclage.veolia.fr', priority:'★ VELKÝ HRÁČ' },
+  { name:'PV CYCLE Belgium', type:'network', country:'BE', lat:50.8429, lng:4.4066,
+    desc:'EU síť sběru FV panelů · Registr sběrných míst · Klíčový kontakt pro mapování zdrojů EVA',
+    contact:'pvcycle.be · +32 2 880 72 60', priority:'★★ SÍŤ / REGISTR' },
+  { name:'Umicore', type:'buyer', country:'BE', lat:51.1808, lng:4.8952,
+    desc:'Přední EU rafinerie · Extrahuje Ag z FV panelů a elektroniky · LBMA certifikovaná',
+    contact:'umicore.com · +32 14 24 51 11', priority:'★★★ IDEÁLNÍ ODBĚRATEL' },
+  { name:'Heraeus Precious Metals', type:'buyer', country:'DE', lat:50.1319, lng:8.9257,
+    desc:'Největší EU zpracovatel průmyslových drahých kovů · Vyrábí Ag pastu pro FV',
+    contact:'heraeus-precious-metals.com · +49 6181 350', priority:'★★★ ODBĚRATEL Ag' },
+  { name:'Argor-Heraeus', type:'buyer', country:'CH', lat:45.8748, lng:8.9818,
+    desc:'Přední švýcarská rafinerie · LBMA certifikovaná · Přetaví Ag na investiční slitky',
+    contact:'argor.com · +41 91 640 53 53', priority:'★★ RAFINERIE / SLITKY' },
+  { name:'Boliden Rönnskär', type:'buyer', country:'SE', lat:64.6698, lng:21.2671,
+    desc:'Švédská rafinerie · Velký závod na recyklaci elektronického šrotu · Odběratel Ag scrap',
+    contact:'boliden.com · +46 910 77 30 00', priority:'★★ RAFINERIE SE' },
+];
+
+let partnerMapInit = false;
+let pMap = null;
+let pMarkers = [];
+let currentFilter = 'all';
+
+function initPartnerMap() {
+  partnerMapInit = true;
+  const L = window.L;
+  if (!L) { setTimeout(initPartnerMap, 300); return; }
+
+  pMap = L.map('partner-map', { zoomControl: true }).setView([51, 10], 4);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© CartoDB',
+    maxZoom: 18
+  }).addTo(pMap);
+
+  partners.forEach((p, i) => {
+    const color = p.type === 'supplier' ? '#00d4aa' : p.type === 'buyer' ? '#3b82f6' : '#f0a500';
+    const icon = L.divIcon({
+      html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 0 8px ${color};"></div>`,
+      className: '', iconSize: [14,14], iconAnchor: [7,7]
+    });
+    const marker = L.marker([p.lat, p.lng], {icon}).addTo(pMap);
+    marker.bindPopup(`
+      <div style="font-family:'Share Tech Mono',monospace;font-size:11px;min-width:200px;">
+        <div style="font-weight:bold;font-size:13px;margin-bottom:6px;">${p.name}</div>
+        <div style="color:#666;margin-bottom:4px;">${p.country} · ${p.type === 'supplier' ? '🟢 Dodavatel EVA' : p.type === 'buyer' ? '🔵 Odběratel Ag' : '🟠 Síť'}</div>
+        <div style="margin-bottom:4px;">${p.desc}</div>
+        <div style="color:#3b82f6;font-size:10px;">${p.contact}</div>
+        <div style="color:#f0a500;margin-top:4px;font-size:10px;">${p.priority}</div>
+      </div>`, {maxWidth:280});
+    marker.partnerType = p.type;
+    marker.partnerIndex = i;
+    pMarkers.push(marker);
+  });
+
+  renderPartnerCards('all');
+}
+
+function filterPartners(f) {
+  currentFilter = f;
+  ['all','supplier','buyer'].forEach(x => {
+    const btn = document.getElementById('pfilter-' + x);
+    btn.classList.toggle('active', x === f);
+  });
+  pMarkers.forEach((m, i) => {
+    const p = partners[i];
+    const show = f === 'all' || p.type === f || (f === 'supplier' && p.type === 'network');
+    if (pMap) { show ? m.addTo(pMap) : m.remove(); }
+  });
+  renderPartnerCards(f);
+}
+
+function renderPartnerCards(f) {
+  const filtered = partners.filter(p => f === 'all' || p.type === f || (f === 'supplier' && p.type === 'network'));
+  const color = p => p.type === 'supplier' ? '#00d4aa' : p.type === 'buyer' ? '#3b82f6' : '#f0a500';
+  const label = p => p.type === 'supplier' ? '🟢 DODAVATEL EVA' : p.type === 'buyer' ? '🔵 ODBĚRATEL Ag' : '🟠 SÍŤ';
+  document.getElementById('partner-cards').innerHTML = filtered.map(p => `
+    <div style="background:var(--surface);border:1px solid ${color(p)}33;border-left:3px solid ${color(p)};border-radius:4px;padding:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:15px;color:#fff;">${p.name}</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:${color(p)};white-space:nowrap;margin-left:8px;">${p.country}</div>
+      </div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:${color(p)};margin-bottom:6px;letter-spacing:1px;">${label(p)}</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text-dim);line-height:1.6;margin-bottom:6px;">${p.desc}</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#3b82f6;">${p.contact}</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--yellow);margin-top:4px;">${p.priority}</div>
+    </div>`).join('');
+}
 </script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 </body>
 </html>
